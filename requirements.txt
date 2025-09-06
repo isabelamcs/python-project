@@ -1,0 +1,12 @@
+requests
+pandas
+pyarrow
+pyyaml
+python-dotenv
+openai
+structlog
+pytest
+pytest-mock
+streamlit
+psycopg2-binary
+sqlalchemy
