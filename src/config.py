@@ -7,6 +7,7 @@ import yaml
 from pathlib import Path
 from dotenv import load_dotenv
 from typing import Dict, List, Any
+from copy import deepcopy
 
 # Carrega variáveis de ambiente
 load_dotenv()
@@ -23,10 +24,12 @@ class Config:
         """
         if config_path is None:
             config_path = Path(__file__).parent.parent / "config" / "config.yaml"
-        
+
         self.config_path = Path(config_path)
         self._load_config()
+        self._normalize_config_keys()
         self._load_env_vars()
+        self._ensure_data_directories()
     
     def _load_config(self):
         """Carrega configurações do arquivo YAML."""
@@ -37,6 +40,29 @@ class Config:
             raise FileNotFoundError(f"Arquivo de configuração não encontrado: {self.config_path}")
         except yaml.YAMLError as e:
             raise ValueError(f"Erro ao carregar configuração YAML: {e}")
+
+    def _normalize_config_keys(self):
+        """Normaliza variações de nomes de chaves para manter compatibilidade com testes/versões antigas."""
+        # Suporte a 'exchange_rate_api' -> 'api'
+        if 'exchange_rate_api' in self._config and 'api' not in self._config:
+            self._config['api'] = self._config['exchange_rate_api']
+        # Suporte a data_paths.raw -> bronze se bronze ausente
+        if 'data_paths' in self._config:
+            dp = self._config['data_paths']
+            if 'raw' in dp and 'bronze' not in dp:
+                dp['bronze'] = dp['raw']
+        # Garantir estrutura mínima
+        self._config.setdefault('data_paths', {})
+        for k in ['bronze', 'silver', 'gold', 'logs']:
+            self._config['data_paths'].setdefault(k, f"data/{k}" if k != 'logs' else 'logs')
+
+    def _ensure_data_directories(self):
+        """Cria diretórios de dados se não existirem."""
+        try:
+            for path in self._config.get('data_paths', {}).values():
+                Path(path).mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            raise RuntimeError(f"Falha ao criar diretórios de dados: {e}")
     
     def _load_env_vars(self):
         """Carrega variáveis sensíveis do ambiente."""
@@ -97,17 +123,14 @@ class Config:
         Returns:
             bool: True se todas as chaves necessárias estão presentes
         """
-        missing_keys = []
-        
+        missing_messages = []
         if not self.exchange_rate_api_key:
-            missing_keys.append('EXCHANGE_RATE_API_KEY')
-        
+            missing_messages.append('EXCHANGE_RATE_API_KEY não encontrada')
         if not self.openai_api_key:
-            missing_keys.append('OPENAI_API_KEY')
-        
-        if missing_keys:
-            raise ValueError(f"Chaves de API não configuradas: {', '.join(missing_keys)}")
-        
+            missing_messages.append('OPENAI_API_KEY não encontrada')
+        if missing_messages:
+            # Junta mensagens mantendo compatibilidade com testes que usam regex para EXCHANGE_RATE_API_KEY
+            raise ValueError('; '.join(missing_messages))
         return True
     
     def get_full_api_url(self, endpoint: str) -> str:
@@ -121,3 +144,21 @@ class Config:
             str: URL completa
         """
         return f"{self.api_base_url}/{self.exchange_rate_api_key}/{endpoint}"
+
+    # ---------------------- Métodos e propriedades adicionais para compatibilidade de testes ----------------------
+    @property
+    def exchange_rate_config(self) -> Dict[str, Any]:
+        """Retorna bloco de configuração da API de câmbio (compatibilidade)."""
+        return self._config.get('api', {})
+
+    def _merge_configs(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+        """Realiza merge superficial com merge profundo em dicionários aninhados.
+        Listas são substituídas integralmente.
+        """
+        result = deepcopy(base)
+        for k, v in override.items():
+            if k in result and isinstance(result[k], dict) and isinstance(v, dict):
+                result[k] = self._merge_configs(result[k], v)
+            else:
+                result[k] = v
+        return result

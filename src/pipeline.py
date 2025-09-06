@@ -82,12 +82,14 @@ class CurrencyExchangePipeline:
             
             # 1. Ingestão
             self.logger.info("Etapa 1: Ingestão de dados")
-            raw_file = self.ingester.ingest_daily_rates(date_str)
-            results['raw_file'] = str(raw_file)
+            bronze_file = self.ingester.ingest_daily_rates(date_str)
+            # Compat: expor tanto bronze_file quanto raw_file (legado)
+            results['bronze_file'] = str(bronze_file)
+            results['raw_file'] = str(bronze_file)
             
             # 2. Transformação
             self.logger.info("Etapa 2: Transformação de dados")
-            silver_file = self.transformer.transform_daily_data(raw_file, date_str)
+            silver_file = self.transformer.transform_daily_data(bronze_file, date_str)
             results['silver_file'] = str(silver_file)
             
             # 3. Carga
@@ -212,7 +214,7 @@ class CurrencyExchangePipeline:
                     self.llm_analyzer is not None
                 ]),
                 'data_paths': {
-                    'raw': str(Path(self.config.data_paths['raw']).exists()),
+                    'bronze': str(Path(self.config.data_paths['bronze']).exists()),
                     'silver': str(Path(self.config.data_paths['silver']).exists()),
                     'gold': str(Path(self.config.data_paths['gold']).exists()),
                     'logs': str(Path(self.config.data_paths['logs']).exists())
