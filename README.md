@@ -1,16 +1,16 @@
 # Pipeline de Cotações Cambiais com Python + LLM
 
-Um pipeline completo de ETL (Extract, Transform, Load) para processamento de dados de câmbio com integração de LLM para análise de insights de negócio.
+Um pipeline completo de ETL (Extract, Transform, Load) para processamento de dados de câmbio com integração de LLM para geração de insights de negócio.
 
 ## Características
 
-- **ETL Completo**: Pipeline seguindo arquitetura medallion (Bronze → Silver → Gold)
+- **ETL Completo**: Arquitetura Medallion (Bronze → Silver → Gold)
 - **Integração com APIs**: exchangerate-api.com para dados de câmbio
-- **Análise com LLM**: ChatGPT para insights de negócio automatizados
-- **Logging Estruturado**: Sistema completo de logs com structlog
-- **Validação de Dados**: Verificações de qualidade em todas as etapas
-- **Configuração Flexível**: YAML + variáveis de ambiente
-- **Testes Automatizados**: Suite completa de testes com pytest
+- **Análise com LLM**: ChatGPT (OpenAI) para insights automatizados
+- **Logging Estruturado**: Logs contextualizados
+- **Validação de Dados**: Checks em cada camada
+- **Configuração Flexível**: YAML + variáveis de ambiente (.env)
+- **Testes Automatizados**: Pytest
 
 ## Estrutura do Projeto
 
@@ -32,10 +32,10 @@ currency_exchange_pipeline/
 │   ├── test_config.py       # Testes de configuração
 │   └── test_pipeline.py     # Testes do pipeline
 ├── data/                    # Diretórios de dados (criados automaticamente)
-│   ├── raw/                 # Dados brutos (Bronze)
+│   ├── bronze/              # Dados brutos (Bronze)
 │   ├── silver/              # Dados processados (Silver)
 │   ├── gold/                # Dados agregados (Gold)
-│   └── logs/                # Arquivos de log
+├── logs/                    # Arquivos de log
 ├── .env.example             # Template de variáveis de ambiente
 ├── requirements.txt         # Dependências Python
 ├── main.py                  # Ponto de entrada
@@ -46,16 +46,29 @@ currency_exchange_pipeline/
 
 ### 1. Clonar o repositório
 ```bash
-git clone <repository-url>
-cd currency_exchange_pipeline
+git clone https://github.com/isabelamcs/python-project.git
+cd python-project
+```
+
+Crie o arquivo `.env` a partir do template:
+```bash
+cp .env.example .env   # Linux / Mac
+# Windows (PowerShell)
+Copy-Item .env.example .env
 ```
 
 ### 2. Criar ambiente virtual
+Linux / Mac:
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+```
+Windows (PowerShell):
+```powershell
+python -m venv venv
+./venv/Scripts/Activate.ps1
+python -m pip install --upgrade pip
 ```
 
 ### 3. Instalar dependências
@@ -64,10 +77,10 @@ pip install -r requirements.txt
 ```
 
 ### 4. Configurar variáveis de ambiente
-```
-# Editar .env com suas chaves de API
-EXCHANGE_RATE_API_KEY=sua_chave_aqui
-OPENAI_API_KEY=sua_chave_openai_aqui
+Edite o arquivo `.env` e inclua:
+```dotenv
+EXCHANGE_RATE_API_KEY=sua_chave_exchangerate
+OPENAI_API_KEY=sua_chave_openai
 ```
 
 ### 5. Obter chaves de API
@@ -86,34 +99,34 @@ OPENAI_API_KEY=sua_chave_openai_aqui
 
 ### Verificar Status
 ```bash
-python main.py --status
+python3 main.py --status
 ```
 
 ### Pipeline Diário
 ```bash
 # Para hoje
-python main.py --daily
+python3 main.py --daily
 
 # Para data específica
-python main.py --daily --date 2024-01-15
+python3 main.py --daily --date 2024-01-15
 
 # Com saída detalhada
-python main.py --daily --verbose
+python3 main.py --daily --verbose
 ```
 
 ### Pipeline Histórico
 ```bash
 # Período específico
-python main.py --historical --start 2024-01-01 --end 2024-01-07
+python3 main.py --historical --start 2024-01-01 --end 2024-01-07
 
 # Com saída detalhada
-python main.py --historical --start 2024-01-01 --end 2024-01-07 --verbose
+python3 main.py --historical --start 2024-01-01 --end 2024-01-07 --verbose
 ```
 
 ### Configuração Personalizada
 ```bash
 # Usar arquivo de configuração personalizado
-python main.py --daily --config /path/to/custom/config.yaml
+python3 main.py --daily --config /path/to/custom/config.yaml
 ```
 
 ## Testes
@@ -138,25 +151,25 @@ pytest tests/ --cov=src
 ## Arquitetura dos Dados
 
 ### Camada Bronze (Raw)
-- **Localização**: `data/raw/`
-- **Formato**: Parquet
+- **Localização**: `data/bronze/`
+- **Formato**: Parquet (ou JSON intermediário)
 - **Conteúdo**: Dados brutos da API sem transformação
-- **Particionamento**: Por data (`YYYY/MM/DD`)
+- **Particionamento**: Estratégia simples por data no nome do arquivo
 
 ### Camada Silver (Processed)
 - **Localização**: `data/silver/`
 - **Formato**: Parquet
 - **Conteúdo**: Dados limpos e validados
-- **Transformações**: 
-  - Normalização de nomes de colunas
-  - Validação de tipos de dados
+- **Transformações**:
+  - Normalização de colunas
+  - Tipagem/validação
   - Remoção de duplicatas
-  - Cálculo de métricas derivadas
+  - Enriquecimentos
 
 ### Camada Gold (Aggregated)
 - **Localização**: `data/gold/`
 - **Formato**: Parquet
-- **Conteúdo**: Dados agregados para análise
+- **Conteúdo**: Dados agregados / métricas
 - **Agregações**:
   - Estatísticas por moeda
   - Variações percentuais
@@ -190,10 +203,10 @@ O pipeline integra ChatGPT para gerar insights automáticos:
 ## Monitoramento
 
 ### Logs
-- **Localização**: `data/logs/`
-- **Formato**: JSON estruturado
+- **Localização**: `logs/`
+- **Formato**: Texto estruturado (pode ser adaptado para JSON)
 - **Níveis**: DEBUG, INFO, WARNING, ERROR
-- **Rotação**: Diária com retenção de 30 dias
+- **Rotação**: (implementar se necessário via handlers)
 
 ### Métricas
 - Tempo de execução por etapa
@@ -203,28 +216,30 @@ O pipeline integra ChatGPT para gerar insights automáticos:
 
 ## Configuração Avançada
 
-### Arquivo config.yaml
+### Arquivo config.yaml (trecho atual)
 ```yaml
-# Personalizar configurações
-exchange_rate_api:
+api:
   base_url: "https://v6.exchangerate-api.com/v6"
   timeout: 30
-  currencies: ["USD", "EUR", "GBP", "JPY"]
+  
+currencies:
+  base: "USD"
+  targets: ["BRL", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "MXN", "ARS"]
+
+data_paths:
+  bronze: "data/bronze"
+  silver: "data/silver"
+  gold: "data/gold"
+  logs: "logs"
 
 llm:
   model: "gpt-3.5-turbo"
-  temperature: 0.1
   max_tokens: 1000
-
-data_paths:
-  raw: "./data/raw"
-  silver: "./data/silver"
-  gold: "./data/gold"
-  logs: "./data/logs"
+  temperature: 0.3
 
 logging:
   level: "INFO"
-  format: "json"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 ```
 
 ## Solução de Problemas
@@ -232,8 +247,11 @@ logging:
 ### Erro: "API key não encontrada"
 ```bash
 # Verificar se as variáveis estão definidas
-echo $EXCHANGE_RATE_API_KEY
+echo $EXCHANGE_RATE_API_KEY  # Linux / Mac
 echo $OPENAI_API_KEY
+# Windows (PowerShell)
+echo $Env:EXCHANGE_RATE_API_KEY
+echo $Env:OPENAI_API_KEY
 
 # Recarregar o arquivo .env
 source .env  # Linux/Mac
@@ -243,7 +261,8 @@ source .env  # Linux/Mac
 ### Erro: "Módulo não encontrado"
 ```bash
 # Verificar se está no ambiente virtual
-which python  # deve apontar para venv
+which python  # Linux / Mac
+Get-Command python  # Windows
 
 # Reinstalar dependências
 pip install -r requirements.txt
@@ -252,7 +271,7 @@ pip install -r requirements.txt
 ### Erro de permissão nos diretórios
 ```bash
 # Dar permissão de escrita
-chmod -R 755 data/
+chmod -R 755 data/   # Linux / Mac (Windows normalmente não precisa)
 ```
 
 ## Desenvolvimento
@@ -265,8 +284,33 @@ exchange_rate_api:
 ```
 
 ### Personalizar análise LLM
-1. Editar prompts em `src/llm_analyzer.py`
-2. Ajustar parâmetros do modelo no config
+1. Ajustar template de prompt em `src/llm_analyzer.py`
+2. Alterar parâmetros (model, temperature, max_tokens) em `config/config.yaml`
+3. Reexecutar pipeline
+
+## Arquivo .env.example (sugestão)
+```dotenv
+# Chaves de API
+EXCHANGE_RATE_API_KEY=coloque_sua_chave
+OPENAI_API_KEY=coloque_sua_chave
+
+# (Opcional) Config DB
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=currency_exchange
+DB_USER=postgres
+DB_PASSWORD=
+```
+
+## Roadmap / Próximos Passos
+- Adicionar persistência em banco (opcional)
+- Implementar rotação de logs
+- Adicionar camada de métricas Prometheus
+- Containerização (Docker)
+- GitHub Actions (CI: lint + testes)
+
+## Licença
+Definir licença (ex: MIT) e adicionar arquivo `LICENSE`.
 
 
 
