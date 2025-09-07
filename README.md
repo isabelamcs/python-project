@@ -15,7 +15,7 @@ Um pipeline completo de ETL (Extract, Transform, Load) para processamento de dad
 ## Estrutura do Projeto
 
 ```
-currency_exchange_pipeline/
+python-project/
 ├── config/
 │   └── config.yaml           # Configuração principal
 ├── src/
@@ -32,7 +32,7 @@ currency_exchange_pipeline/
 │   ├── test_config.py       # Testes de configuração
 │   └── test_pipeline.py     # Testes do pipeline
 ├── data/                    # Diretórios de dados (criados automaticamente)
-│   ├── bronze/              # Dados brutos (Bronze)
+│   ├── raw/              # Dados brutos (Bronze)
 │   ├── silver/              # Dados processados (Silver)
 │   ├── gold/                # Dados agregados (Gold)
 ├── logs/                    # Arquivos de log
@@ -50,40 +50,7 @@ git clone https://github.com/isabelamcs/python-project.git
 cd python-project
 ```
 
-Crie o arquivo `.env` a partir do template:
-```bash
-cp .env.example .env   # Linux / Mac
-# Windows (PowerShell)
-Copy-Item .env.example .env
-```
-
-### 2. Criar ambiente virtual
-Linux / Mac:
-```bash
-python3 -m venv venv
-source venv/bin/activate
-python -m pip install --upgrade pip
-```
-Windows (PowerShell):
-```powershell
-python -m venv venv
-./venv/Scripts/Activate.ps1
-python -m pip install --upgrade pip
-```
-
-### 3. Instalar dependências
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Configurar variáveis de ambiente
-Edite o arquivo `.env` e inclua:
-```dotenv
-EXCHANGE_RATE_API_KEY=sua_chave_exchangerate
-OPENAI_API_KEY=sua_chave_openai
-```
-
-### 5. Obter chaves de API
+### 2. Obter chaves de API
 
 #### Exchange Rate API
 1. Acesse [exchangerate-api.com](https://exchangerate-api.com/)
@@ -94,6 +61,26 @@ OPENAI_API_KEY=sua_chave_openai
 1. Acesse [platform.openai.com](https://platform.openai.com/)
 2. Crie uma conta 
 3. Gere uma chave de API
+
+Crie o arquivo `.env` com o seguinte conteúdo, substituindo os "sua-api" pelas keys apis geradas
+```
+# API Keys
+EXCHANGE_RATE_API_KEY="sua-api" 
+OPENAI_API_KEY="sua-api"
+
+```
+
+### 3. Criar ambiente virtual
+```bash
+python3 -m venv venv
+source venv/bin/activate
+python -m pip install --upgrade pip
+```
+
+### 4. Instalar dependências
+```bash
+pip install -r requirements.txt
+```
 
 ## Uso
 
@@ -123,6 +110,65 @@ python3 main.py --historical --start 2024-01-01 --end 2024-01-07
 python3 main.py --historical --start 2024-01-01 --end 2024-01-07 --verbose
 ```
 
+### Dashboard (Streamlit)
+
+O projeto inclui um dashboard interativo para visualizar as taxas e os insights gerados pelo LLM.
+
+#### 1. Requisitos
+- Dependências já listadas em `requirements.txt` (incluem `streamlit` e `plotly`).
+- Dados gold gerados (arquivos `exchange_rates_gold_YYYY-MM-DD.parquet` e `llm_insights_YYYY-MM-DD.json` em `data/gold/`).
+
+Para gerar dados antes de abrir o dashboard, execute pelo menos uma vez:
+```bash
+python3 main.py --daily
+```
+
+#### 2. Executar o Dashboard
+Dentro da raiz do projeto:
+```bash
+streamlit run dashboard/app-dashboard.py
+```
+
+No Windows (PowerShell), se estiver usando ambiente virtual:
+```powershell
+venv\Scripts\Activate.ps1
+streamlit run dashboard/app-dashboard.py
+```
+
+Isso abrirá automaticamente o navegador (ou disponibilizará uma URL local, ex: http://localhost:8501).
+
+#### 3. Funcionalidades Atuais
+- Seleção de uma ou mais moedas (`target_currency`).
+- Gráfico de barras com a métrica `latest_rate` para a última data disponível.
+- Extração automática da data a partir dos nomes dos arquivos Parquet.
+- Leitura do arquivo de insights LLM correspondente à última data (`llm_insights_YYYY-MM-DD.json`).
+- Filtro dinâmico do texto de explicação para exibir somente as moedas selecionadas (com opção de expandir para texto completo).
+
+#### 4. Estrutura Esperada dos Arquivos
+```
+data/gold/
+  exchange_rates_gold_2025-08-31.parquet
+  llm_insights_2025-08-31.json
+```
+
+#### 5. Problemas Comuns
+| Sintoma | Causa Provável | Solução |
+|--------|----------------|---------|
+| Dashboard abre vazio | Nenhum arquivo .parquet em `data/gold/` | Rodar `python3 main.py --daily` |
+| Sem insights LLM | JSON da data não existe | Verificar pipeline LLM ou usar outra data |
+| Erro de módulo `streamlit` | Dependência não instalada | `pip install -r requirements.txt` |
+| Gráfico sem barras | Filtro sem moedas selecionadas | Selecionar ao menos uma moeda |
+
+#### 6. Customizações Simples
+- Alterar métrica: editar diretamente `required_metric` em `dashboard/app-dashboard.py`.
+- Exibir série temporal: reintroduzir trecho de código (mantido em histórico de commits) para linha temporal.
+- Adicionar exportação CSV: usar `st.download_button` sobre `last_df`.
+
+#### 7. Encerrando o Dashboard
+Pressione `CTRL+C` no terminal onde o Streamlit estiver rodando.
+
+---
+
 ### Configuração Personalizada
 ```bash
 # Usar arquivo de configuração personalizado
@@ -133,7 +179,7 @@ python3 main.py --daily --config /path/to/custom/config.yaml
 
 ### Executar todos os testes
 ```bash
-pytest tests/
+pytest tests
 ```
 
 ### Executar testes específicos
@@ -294,23 +340,10 @@ exchange_rate_api:
 EXCHANGE_RATE_API_KEY=coloque_sua_chave
 OPENAI_API_KEY=coloque_sua_chave
 
-# (Opcional) Config DB
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=currency_exchange
-DB_USER=postgres
-DB_PASSWORD=
 ```
 
-## Roadmap / Próximos Passos
-- Adicionar persistência em banco (opcional)
-- Implementar rotação de logs
-- Adicionar camada de métricas Prometheus
-- Containerização (Docker)
-- GitHub Actions (CI: lint + testes)
 
-## Licença
-Definir licença (ex: MIT) e adicionar arquivo `LICENSE`.
+
 
 
 

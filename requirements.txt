@@ -8,5 +8,4 @@ structlog
 pytest
 pytest-mock
 streamlit
-psycopg2-binary
-sqlalchemy
+plotly

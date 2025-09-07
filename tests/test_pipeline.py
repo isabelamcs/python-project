@@ -1,16 +1,8 @@
-"""
-Testes para o pipeline principal.
+"""Testes para o pipeline principal do CurrencyExchangePipeline.
 """
 
 import pytest
-import tempfile
-import yaml
-from pathlib import Path
 from unittest.mock import patch, MagicMock
-from datetime import datetime
-
-import sys
-sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from src.pipeline import CurrencyExchangePipeline
 
@@ -83,38 +75,41 @@ class TestCurrencyExchangePipeline:
     @patch('src.pipeline.Config')
     def test_run_daily_pipeline_success(self, mock_config):
         """Testa execução bem-sucedida do pipeline diário."""
-        # Setup mocks
+        # Setup mocks de configuração
         mock_config_instance = MagicMock()
         mock_config.return_value = mock_config_instance
-        
+
+        # Cria mocks dos componentes do pipeline
         mock_ingester = MagicMock()
         mock_transformer = MagicMock()
         mock_loader = MagicMock()
         mock_llm = MagicMock()
-        
-        mock_ingester.ingest_daily_rates.return_value = "raw_file.parquet"
+
+        # Define retornos simulados
+        mock_ingester.ingest_daily_rates.return_value = "bronze_file.parquet"
         mock_transformer.transform_daily_data.return_value = "silver_file.parquet"
         mock_loader.load_daily_data.return_value = "gold_file.parquet"
         mock_llm.analyze_daily_data.return_value = {"insight": "test"}
-        
+
+        # Execução dentro do contexto de patches
         with patch('src.pipeline.setup_logging'), \
              patch('src.pipeline.ExchangeRateIngester', return_value=mock_ingester), \
              patch('src.pipeline.ExchangeRateTransformer', return_value=mock_transformer), \
              patch('src.pipeline.ExchangeRateLoader', return_value=mock_loader), \
              patch('src.pipeline.LLMAnalyzer', return_value=mock_llm):
-            
+
             pipeline = CurrencyExchangePipeline()
             result = pipeline.run_daily_pipeline("2024-01-15")
-            
-            # Verifica se todas as etapas foram executadas
+
+            # Asserções de chamadas
             mock_ingester.ingest_daily_rates.assert_called_once_with("2024-01-15")
-            mock_transformer.transform_daily_data.assert_called_once_with("raw_file.parquet", "2024-01-15")
+            mock_transformer.transform_daily_data.assert_called_once_with("bronze_file.parquet", "2024-01-15")
             mock_loader.load_daily_data.assert_called_once_with("silver_file.parquet", "2024-01-15")
             mock_llm.analyze_daily_data.assert_called_once_with("gold_file.parquet", "2024-01-15")
-            
-            # Verifica resultado
+
+            # Asserções de resultado
             assert 'error' not in result
-            assert result['raw_file'] == "raw_file.parquet"
+            assert result['bronze_file'] == "bronze_file.parquet"
             assert result['silver_file'] == "silver_file.parquet"
             assert result['gold_file'] == "gold_file.parquet"
             assert result['llm_analysis'] == {"insight": "test"}

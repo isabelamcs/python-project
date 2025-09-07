@@ -38,7 +38,7 @@ class TestConfig:
                 'temperature': 0.5
             },
             'data_paths': {
-                'raw': './custom_data/raw',
+                'bronze': './custom_data/bronze',
                 'silver': './custom_data/silver'
             },
             'logging': {
@@ -57,7 +57,7 @@ class TestConfig:
             assert config.exchange_rate_config['timeout'] == 60
             assert config.llm_config['model'] == 'gpt-4'
             assert config.llm_config['temperature'] == 0.5
-            assert config.data_paths['raw'] == './custom_data/raw'
+            assert config.data_paths['bronze'] == './custom_data/bronze'
             assert config.logging_config['level'] == 'DEBUG'
             
         finally:
@@ -109,7 +109,7 @@ class TestConfig:
         with tempfile.TemporaryDirectory() as temp_dir:
             config_data = {
                 'data_paths': {
-                    'raw': f'{temp_dir}/raw',
+                    'bronze': f'{temp_dir}/bronze',
                     'silver': f'{temp_dir}/silver',
                     'gold': f'{temp_dir}/gold',
                     'logs': f'{temp_dir}/logs'
@@ -124,7 +124,7 @@ class TestConfig:
                 config = Config(temp_config_path)
                 
                 # Verifica se os diretórios foram criados
-                assert Path(config.data_paths['raw']).exists()
+                assert Path(config.data_paths['bronze']).exists()
                 assert Path(config.data_paths['silver']).exists()
                 assert Path(config.data_paths['gold']).exists()
                 assert Path(config.data_paths['logs']).exists()
